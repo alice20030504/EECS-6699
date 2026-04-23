@@ -1,0 +1,25 @@
+# Experiment R2a: Model-wise Double Descent (Nakkiran 2020 reproduction)
+experiment: R2a
+
+data:
+  dataset: cifar10
+  label_noise: 0.15        # 15% label noise
+  num_workers: 4
+
+model:
+  arch: resnet18
+  width_multipliers: [1, 2, 4, 6, 8, 10, 14, 20, 32, 48, 64]
+
+training:
+  epochs: 500
+  batch_size: 128
+  optimizer: sgd
+  momentum: 0.9
+  weight_decay: 0.0
+  lr: 0.1
+  lr_schedule: cosine      # linear warmup + cosine decay
+  warmup_epochs: 5
+
+logging:
+  results_dir: results/R2a
+  save_checkpoint: false   # checkpoints too large; save only metrics

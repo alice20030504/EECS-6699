@@ -1,0 +1,34 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+.env
+*.egg
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Data (auto-downloaded by torchvision) ────────────────────────────────────
+data/
+
+# ── Model checkpoints (large binaries) ──────────────────────────────────────
+results/**/*.pth
+results/**/*.pt
+results/**/*.ckpt
+
+# CSV result files are committed (small, useful for reproducibility)
+# Un-comment the line below if they grow too large:
+# results/**/*.csv
+
+# ── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
