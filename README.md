@@ -2,7 +2,14 @@
 
 EECS-6699 Final Project | Columbia University | Spring 2026
 
-**Team**: Yuxia Meng (Part A · Theory & Writing Lead), Yixuan Ye (Part B · Engineering & Reproduction Lead), Shurong Zhang (Part C · Main Experiment Lead), Rui Li (Part D · Supplementary Experiments + Visualization & Coordination Lead)
+## Team
+
+| Member | Role | Key Responsibilities |
+|--------|------|---------------------|
+| Yuxia Meng | A · Theory & Writing Lead | Sec 1, 2, 5; literature review; paper polish |
+| Yixuan Ye | B · Engineering & Reproduction Lead | PyTorch pipeline; R2a; N1 low-noise; Sec 3.1 |
+| Shurong Zhang | C · Main Experiment Lead | R2a; N1 high-noise; Sec 4.1 (phase diagram) |
+| Rui Li | D · Visualization & Coordination Lead | N3 (weight decay); all figures; slides; Sec 4.3 |
 
 ---
 
