@@ -2,7 +2,7 @@
 
 EECS-6699 Final Project | Columbia University | Spring 2026
 
-**Team**: Yuxia Meng (A · Theory & Writing), Yixuan Ye (B · Engineering), Shurong Zhang (C · Main Experiments), Rui Li (D · Visualization & Coordination)
+**Team**: Yuxia Meng (Part A · Theory & Writing Lead), Yixuan Ye (Part B · Engineering & Reproduction Lead), Shurong Zhang (Part C · Main Experiment Lead), Rui Li (Part D · Supplementary Experiments + Visualization & Coordination Lead)
 
 ---
 
