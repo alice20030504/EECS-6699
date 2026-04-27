@@ -1,34 +1,44 @@
-# ── Python ──────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
+.Python
 *.egg-info/
-.eggs/
 dist/
 build/
-.env
-*.egg
+.eggs/
 
-# ── Jupyter ──────────────────────────────────────────────────────────────────
+# Data & results (large files)
+data/
+results/checkpoints/
+*.pt
+*.pth
+
+# Keep result JSONs and plots
+!results/**/*.json
+!results/**/*.png
+!results/**/*.pdf
+
+# Jupyter
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# ── Data (auto-downloaded by torchvision) ────────────────────────────────────
-data/
+# Environment
+.env
+venv/
+env/
+.venv/
 
-# ── Model checkpoints (large binaries) ──────────────────────────────────────
-results/**/*.pth
-results/**/*.pt
-results/**/*.ckpt
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# CSV result files are committed (small, useful for reproducibility)
-# Un-comment the line below if they grow too large:
-# results/**/*.csv
-
-# ── OS artefacts ─────────────────────────────────────────────────────────────
+# OS
 .DS_Store
 Thumbs.db
 
-# ── IDE ──────────────────────────────────────────────────────────────────────
-.vscode/
-.idea/
+# Colab temp
+/content/

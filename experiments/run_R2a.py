@@ -30,8 +30,8 @@ def run_single(k: int, cfg: dict) -> None:
 
     print(f"[R2a] Starting k={k}")
     train_loader, test_loader = get_cifar10_loaders(
-        noise_eta=cfg["data"]["label_noise"],
-        subset_size=None,
+        noise_rate=cfg["data"]["label_noise"],
+        n_train=5000,
         batch_size=cfg["training"]["batch_size"],
         num_workers=cfg["data"]["num_workers"],
     )

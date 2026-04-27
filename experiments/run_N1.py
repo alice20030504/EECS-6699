@@ -43,8 +43,8 @@ def run_single(k: int, eta: float, cfg: dict) -> None:
 
     print(f"[N1] Starting k={k} η={eta_to_pct(eta)}%")
     train_loader, test_loader = get_cifar10_loaders(
-        noise_eta=eta,
-        subset_size=cfg["data"]["subset_size"],
+        noise_rate=eta,
+        n_train=cfg["data"]["subset_size"],
         batch_size=cfg["training"]["batch_size"],
         num_workers=cfg["data"]["num_workers"],
     )
