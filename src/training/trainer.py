@@ -1,9 +1,9 @@
-"""Training loop: SGD with linear warmup + cosine LR decay."""
+"""Training loop: SGD with linear warmup + cosine LR decay.
 
+Used by experiments/run_R2a.py, run_N1.py, run_N3.py.
+Compatible with the YAML-driven config format in configs/*.yaml.
+"""
 from __future__ import annotations
-
-import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -28,106 +28,123 @@ class Trainer:
         test_loader: DataLoader,
         cfg: dict,
     ):
-        self.model = model.to(DEVICE)
+        self.model        = model.to(DEVICE)
         self.train_loader = train_loader
-        self.test_loader = test_loader
-        self.cfg = cfg
-        self.criterion = nn.CrossEntropyLoss()
+        self.test_loader  = test_loader
+        self.cfg          = cfg
+        self.criterion    = nn.CrossEntropyLoss()
+        self.optimizer    = self._build_optimizer()
+        self.scheduler    = self._build_scheduler()
 
-        self.optimizer = self._build_optimizer()
-        self.scheduler = self._build_scheduler()
-
-    # ------------------------------------------------------------------
-    # Setup helpers
-    # ------------------------------------------------------------------
+    # ── Setup ─────────────────────────────────────────────────────────────────
 
     def _build_optimizer(self) -> torch.optim.Optimizer:
         cfg = self.cfg
         return torch.optim.SGD(
             self.model.parameters(),
             lr=cfg["lr"],
-            momentum=cfg["momentum"],
+            momentum=cfg.get("momentum", 0.9),
             weight_decay=cfg.get("weight_decay", 0.0),
             nesterov=False,
         )
 
     def _build_scheduler(self) -> torch.optim.lr_scheduler.LRScheduler:
-        """Linear warmup for warmup_epochs, then cosine decay to 0.
+        """Linear warmup for warmup_epochs, then cosine decay to 0."""
+        epochs        = self.cfg["epochs"]
+        warmup_epochs = self.cfg.get("warmup_epochs", 5)
 
-        TODO:
-            Use torch.optim.lr_scheduler.SequentialLR combining:
-              1. LinearLR(start_factor=1e-3, end_factor=1.0, total_iters=warmup_epochs)
-              2. CosineAnnealingLR(T_max=epochs - warmup_epochs, eta_min=0)
-            torch docs: https://pytorch.org/docs/stable/optim.html
-        """
-        raise NotImplementedError("Implement warmup + cosine LR schedule.")
+        warmup  = torch.optim.lr_scheduler.LinearLR(
+            self.optimizer,
+            start_factor=1e-3,
+            end_factor=1.0,
+            total_iters=warmup_epochs,
+        )
+        cosine  = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer,
+            T_max=max(1, epochs - warmup_epochs),
+            eta_min=0.0,
+        )
+        return torch.optim.lr_scheduler.SequentialLR(
+            self.optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_epochs],
+        )
 
-    # ------------------------------------------------------------------
-    # Per-epoch steps
-    # ------------------------------------------------------------------
+    # ── Per-epoch steps ───────────────────────────────────────────────────────
 
     def train_one_epoch(self) -> dict:
-        """Run one full pass over train_loader. Return train metrics.
+        """One full pass over train_loader. Returns train metrics."""
+        self.model.train()
+        total_loss, correct, total = 0.0, 0, 0
+        for inputs, targets in self.train_loader:
+            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+            self.optimizer.zero_grad()
+            logits = self.model(inputs)
+            loss   = self.criterion(logits, targets)
+            loss.backward()
+            self.optimizer.step()
 
-        Returns:
-            dict with keys: train_loss, train_acc (float, averaged over batches)
+            total_loss += loss.item() * targets.size(0)
+            correct    += (logits.argmax(1) == targets).sum().item()
+            total      += targets.size(0)
 
-        TODO:
-            self.model.train()
-            Loop over (inputs, targets) from self.train_loader:
-                inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-                self.optimizer.zero_grad()
-                logits = self.model(inputs)
-                loss = self.criterion(logits, targets)
-                loss.backward()
-                self.optimizer.step()
-                accumulate loss and correct predictions
-            Return averaged metrics.
-        """
-        raise NotImplementedError("Implement training loop.")
+        return {
+            "train_loss": total_loss / total,
+            "train_acc":  correct / total,
+        }
 
     def evaluate(self) -> dict:
-        """Evaluate on test_loader with no gradient.
+        """Evaluate on test_loader with no gradient."""
+        self.model.eval()
+        total_loss, correct, total = 0.0, 0, 0
+        with torch.no_grad():
+            for inputs, targets in self.test_loader:
+                inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+                logits = self.model(inputs)
+                loss   = self.criterion(logits, targets)
+                total_loss += loss.item() * targets.size(0)
+                correct    += (logits.argmax(1) == targets).sum().item()
+                total      += targets.size(0)
 
-        Returns:
-            dict with keys: test_loss, test_acc, test_error (= 1 - test_acc)
+        acc = correct / total
+        return {
+            "test_loss":  total_loss / total,
+            "test_acc":   acc,
+            "test_error": 1.0 - acc,
+        }
 
-        TODO:
-            self.model.eval()
-            with torch.no_grad():
-                loop over test_loader, accumulate loss and correct predictions
-            Return averaged metrics.
-        """
-        raise NotImplementedError("Implement evaluation loop.")
-
-    # ------------------------------------------------------------------
-    # Full training run
-    # ------------------------------------------------------------------
+    # ── Full training run ─────────────────────────────────────────────────────
 
     def run(self, logger=None) -> list[dict]:
         """Train for cfg['epochs'] epochs.
 
         Args:
-            logger: Optional CSVLogger. If provided, each epoch row is written
-                    immediately (safe for long runs that may be interrupted).
+            logger: Optional CSVLogger. Each epoch row written immediately
+                    so partial results survive Colab disconnects.
 
         Returns:
-            List of per-epoch metric dicts (epoch, train_loss, train_acc,
-            test_loss, test_acc, test_error, lr).
+            List of per-epoch metric dicts.
         """
-        epochs = self.cfg["epochs"]
+        epochs  = self.cfg["epochs"]
         history = []
 
         for epoch in range(1, epochs + 1):
             train_metrics = self.train_one_epoch()
-            test_metrics = self.evaluate()
+            test_metrics  = self.evaluate()
             self.scheduler.step()
 
-            lr = self.optimizer.param_groups[0]["lr"]
+            lr  = self.optimizer.param_groups[0]["lr"]
             row = {"epoch": epoch, "lr": lr, **train_metrics, **test_metrics}
             history.append(row)
 
             if logger is not None:
                 logger.write_row(row)
+
+            if epoch % 50 == 0 or epoch == epochs:
+                print(
+                    f"  ep {epoch:4d}/{epochs} | "
+                    f"train {train_metrics['train_acc']:.3f} | "
+                    f"test  {test_metrics['test_acc']:.3f}"
+                )
 
         return history

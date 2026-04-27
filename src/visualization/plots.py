@@ -1,10 +1,16 @@
-"""Figure generation for all five paper figures.
+"""Figure generation for all paper figures.
 
-Style conventions (apply to every plot):
-    - Font: use matplotlib rcParams; set once in _apply_style()
-    - Colors: seaborn colorblind palette
-    - Save as both PNG (300 dpi) and PDF for paper inclusion
+Wraps src/plot_utils.py with the DataFrame-based interface used by
+the team's experiment runners (experiments/run_*.py).
+
+Figures:
+    Fig 1 — R1 CNN double descent        (plot_double_descent)
+    Fig 2 — R2 ResNet double descent     (plot_double_descent)
+    Fig 3 — N1 test-error heatmap        (plot_error_heatmap)
+    Fig 4 — N1 phase diagram (core)      (plot_phase_diagram)
+    Fig 5 — N3 weight-decay ablation     (plot_weight_decay_curves)
 """
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
@@ -14,172 +20,189 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-# ── Shared style ────────────────────────────────────────────────────────────
+# Import shared style + primitives from our plot_utils
+import sys, os
+sys.path.insert(0, str(Path(__file__).parents[2]))
+from src.plot_utils import set_style, PALETTE, _save  # noqa: E402
 
 _PHASE_COLORS = {
-    "benign": "#2ecc71",       # green
-    "tempered": "#f39c12",     # orange
-    "catastrophic": "#e74c3c", # red
+    "benign":       PALETTE["benign"],
+    "tempered":     PALETTE["tempered"],
+    "catastrophic": PALETTE["catastrophic"],
 }
 
 
-def _apply_style() -> None:
-    """Set global matplotlib style for all figures.
+# ── Internal save helper ──────────────────────────────────────────────────────
 
-    TODO:
-        Choose font sizes, line widths, and spine style consistent with the
-        paper's LaTeX template (likely ACM or NeurIPS style).
-        Example starting point:
-            plt.rcParams.update({
-                "font.size": 11,
-                "axes.linewidth": 0.8,
-                "lines.linewidth": 1.5,
-            })
-    """
-    sns.set_theme(style="whitegrid", palette="colorblind")
-    # TODO: adjust rcParams to match paper typography
-
-
-def _save(fig: plt.Figure, path: str | Path) -> None:
-    path = Path(path)
+def _save_fig(fig: plt.Figure, save_path: Optional[str]) -> None:
+    if save_path is None:
+        return
+    path = Path(save_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path.with_suffix(".png"), dpi=300, bbox_inches="tight")
     fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
+    print(f"[plot] saved → {path}.png / .pdf")
 
 
-# ── Figure 1 & 3: Double-Descent Curves ─────────────────────────────────────
+# ── Fig 1 & 2: Double-Descent Curves ─────────────────────────────────────────
 
 def plot_double_descent(
     data: dict[str, pd.DataFrame],
     x_col: str,
-    y_col: str = "test_error",
-    xlabel: str = "Width multiplier k",
-    ylabel: str = "Test error",
-    title: str = "",
+    y_col: str          = "test_error",
+    xlabel: str         = "Width multiplier $k$",
+    ylabel: str         = "Error rate",
+    title: str          = "",
     save_path: Optional[str] = None,
 ) -> plt.Figure:
     """Plot one or more double-descent curves on the same axes.
 
     Args:
-        data: Mapping of legend label → DataFrame with columns [x_col, y_col].
-              For Fig 1: one entry (e.g. {"η=15%": df}).
-              For Fig 3: four entries, one per noise level.
-        x_col: Column to use as x-axis (e.g. "k" or "width_mult").
+        data: {label: DataFrame} — one entry per noise/condition.
+              For Fig 1/2: a single entry {"η=15%": df}.
+              For Fig 3 overlay: four entries, one per noise level.
+        x_col: Column for x-axis (e.g. "k").
         y_col: Metric column (default "test_error").
-        save_path: If given, save PNG + PDF here (omit extension).
-
-    Returns:
-        matplotlib Figure.
-
-    TODO:
-        - Plot each series with ax.plot(df[x_col], df[y_col], label=label).
-        - Use log scale for x-axis (ax.set_xscale("log")).
-        - Mark the interpolation threshold (where train error first hits 0)
-          with a vertical dashed line.
-        - Add legend, axis labels, and optional title.
+        save_path: If given, save PNG + PDF (omit extension).
     """
-    _apply_style()
-    fig, ax = plt.subplots(figsize=(6, 4))
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4.5))
 
-    # TODO: implement plot body
+    colors = list(PALETTE.values())[:len(data)]
+    for (label, df), color in zip(data.items(), colors):
+        df_sorted = df.sort_values(x_col)
+        ax.plot(df_sorted[x_col], df_sorted[y_col], "o-", color=color, label=label)
 
-    if save_path:
-        _save(fig, save_path)
+    ax.set_xscale("log", base=2)
+    import matplotlib.ticker as mticker
+    ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
+    ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    if len(data) > 1:
+        ax.legend()
+
+    plt.tight_layout()
+    _save_fig(fig, save_path)
     return fig
 
 
-# ── Figure 2: Test-Error Heatmap ─────────────────────────────────────────────
+# ── Fig 3: Test-Error Heatmap ─────────────────────────────────────────────────
 
 def plot_error_heatmap(
     phase_table: pd.DataFrame,
     save_path: Optional[str] = None,
 ) -> plt.Figure:
-    """Heatmap of final test error in (k, η) space (Fig 2).
+    """Heatmap of final test error in (k, η) space.
 
     Args:
         phase_table: DataFrame with columns [k, eta, test_error].
-        save_path: If given, save PNG + PDF here (omit extension).
-
-    Returns:
-        matplotlib Figure.
-
-    TODO:
-        - Pivot to a matrix: rows=eta (sorted descending), cols=k (sorted ascending).
-        - Use sns.heatmap with annot=True (show error values) and a diverging
-          colormap ("RdYlGn_r" works well — red=high error, green=low).
-        - Label axes clearly; use log-scale tick labels for k if possible.
+        save_path: If given, save PNG + PDF (omit extension).
     """
-    _apply_style()
-    fig, ax = plt.subplots(figsize=(7, 4))
+    set_style()
+    pivot = phase_table.pivot(index="eta", columns="k", values="test_error")
+    pivot = pivot.sort_index(ascending=False)  # η high at top
 
-    # TODO: implement heatmap body
+    fig, ax = plt.subplots(figsize=(8, 4))
+    sns.heatmap(
+        pivot * 100,
+        ax=ax,
+        annot=True,
+        fmt=".1f",
+        cmap="RdYlGn_r",
+        linewidths=0.5,
+        cbar_kws={"label": "Test Error (%)"},
+    )
+    ax.set_xlabel("Width Multiplier $k$")
+    ax.set_ylabel("Label Noise Rate $\eta$")
+    ax.set_title("Test Error Heatmap — CIFAR-10, CNN")
+    ax.set_yticklabels([f"{float(l.get_text()):.0%}" for l in ax.get_yticklabels()])
 
-    if save_path:
-        _save(fig, save_path)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
     return fig
 
 
-# ── Figure 4: Phase Diagram ───────────────────────────────────────────────────
+# ── Fig 4: Phase Diagram ──────────────────────────────────────────────────────
 
 def plot_phase_diagram(
     phase_table: pd.DataFrame,
     save_path: Optional[str] = None,
 ) -> plt.Figure:
-    """Scatter/region plot partitioning (k, η) into three phases (Fig 4, core).
+    """Scatter plot partitioning (k, η) into three phases.
 
     Args:
         phase_table: DataFrame with columns [k, eta, phase].
                      phase ∈ {"benign", "tempered", "catastrophic"}.
-        save_path: If given, save PNG + PDF here (omit extension).
-
-    Returns:
-        matplotlib Figure.
-
-    TODO:
-        - Map each phase to its color in _PHASE_COLORS.
-        - ax.scatter(k_vals, eta_vals, c=colors, s=120, zorder=3).
-        - Optionally draw a hand-fitted or interpolated boundary between phases.
-        - Use log x-axis; add a legend patch for each phase.
-        - Title: "Empirical (k, η) Phase Diagram — CIFAR-10, ResNet-18".
+        save_path: If given, save PNG + PDF (omit extension).
     """
-    _apply_style()
-    fig, ax = plt.subplots(figsize=(6, 4))
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4.5))
 
-    # TODO: implement phase diagram body
+    for phase, grp in phase_table.groupby("phase"):
+        ax.scatter(
+            grp["k"], grp["eta"],
+            c=_PHASE_COLORS.get(phase, "#888888"),
+            s=140, zorder=3,
+            label=phase.capitalize(),
+        )
 
-    if save_path:
-        _save(fig, save_path)
+    ax.set_xscale("log", base=2)
+    import matplotlib.ticker as mticker
+    ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
+    ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
+    ax.set_xlabel("Width Multiplier $k$")
+    ax.set_ylabel("Label Noise Rate $\eta$")
+    ax.set_title("Overfitting Phase Diagram — CIFAR-10")
+    ax.legend(title="Region", loc="upper right")
+
+    plt.tight_layout()
+    _save_fig(fig, save_path)
     return fig
 
 
-# ── Figure 5: Weight Decay Effect ────────────────────────────────────────────
+# ── Fig 5: Weight Decay Curves ────────────────────────────────────────────────
 
-def plot_weight_decay(
+def plot_weight_decay_curves(
     data: dict[float, pd.DataFrame],
-    x_col: str = "k",
-    y_col: str = "test_error",
+    x_col: str          = "k",
+    y_col: str          = "test_error",
     save_path: Optional[str] = None,
 ) -> plt.Figure:
-    """Double-descent curves for different weight decay values (Fig 5).
+    """Double-descent curves for different weight-decay values.
 
     Args:
-        data: Mapping of λ (float) → DataFrame with columns [x_col, y_col].
-        save_path: If given, save PNG + PDF here (omit extension).
-
-    Returns:
-        matplotlib Figure.
-
-    TODO:
-        - Same structure as plot_double_descent but label each curve by λ value.
-        - Use a sequential colormap (e.g. Blues) so increasing λ maps to darker blue.
-        - Key finding to highlight: the DD peak should shrink / disappear at high λ.
+        data: {λ: DataFrame} — one entry per weight-decay value.
+        save_path: If given, save PNG + PDF (omit extension).
     """
-    _apply_style()
-    fig, ax = plt.subplots(figsize=(6, 4))
+    import matplotlib.cm as cm
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4.5))
 
-    # TODO: implement weight decay plot body
+    cmap   = cm.Blues
+    wds    = sorted(data.keys())
+    colors = [cmap(0.35 + 0.55 * i / max(len(wds) - 1, 1)) for i in range(len(wds))]
 
-    if save_path:
-        _save(fig, save_path)
+    for wd, color in zip(wds, colors):
+        df = data[wd].sort_values(x_col)
+        label = f"λ={wd:.0e}" if wd > 0 else "λ=0 (no regularisation)"
+        ax.plot(df[x_col], df[y_col], "o-", color=color, label=label)
+
+    ax.set_xscale("log", base=2)
+    import matplotlib.ticker as mticker
+    ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
+    ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
+    ax.set_xlabel("Width Multiplier $k$")
+    ax.set_ylabel("Test Error")
+    ax.set_title("Effect of Weight Decay on Double Descent (η=15%)")
+    ax.legend(fontsize=9)
+
+    plt.tight_layout()
+    _save_fig(fig, save_path)
     return fig
+
+
+# ── Convenience alias (backward compat) ──────────────────────────────────────
+plot_weight_decay = plot_weight_decay_curves

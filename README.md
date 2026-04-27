@@ -1,138 +1,98 @@
 # Benign Overfitting in Overparameterized Neural Networks
+EECS 6699 Project — Spring 2026
 
-EECS-6699 Final Project | Columbia University | Spring 2026
+## Overview
+We study the **benign overfitting** phenomenon in deep CNNs by systematically mapping out the **(width × label-noise)** phase diagram on CIFAR-10.
 
-## Team
-
-| Member | Role | Key Responsibilities |
-|--------|------|---------------------|
-| Yuxia Meng | A · Theory & Writing Lead | Sec 1, 2, 5; literature review; paper polish |
-| Yixuan Ye | B · Engineering & Reproduction Lead | PyTorch pipeline; R2a; N1 low-noise; Sec 3.1 |
-| Shurong Zhang | C · Main Experiment Lead | R2a; N1 high-noise; Sec 4.1 (phase diagram) |
-| Rui Li | D · Visualization & Coordination Lead | N3 (weight decay); all figures; slides; Sec 4.3 |
-
----
-
-## Project Goal
-
-We investigate the *benign overfitting* phenomenon: when an overparameterized network perfectly interpolates noisy training data, under what conditions does it still generalize well?
-
-Our central question:
-
-> **In the 2-D space of (width multiplier k × label noise η), where is overfitting benign, tempered, or catastrophic?**
-
-This extends Nakkiran et al. (2020)'s model-wise double-descent study — which fixed η = 15% and swept width — by explicitly mapping both dimensions simultaneously and comparing the empirical boundary to the theoretical taxonomy of Mallinar et al. (2022).
-
----
-
-## Experiment List
-
-| ID | Name | Description | Owner | Status |
-|----|------|-------------|-------|--------|
-| **R2a** | Model-wise Double Descent | Reproduce Nakkiran 2020: ResNet-18 on CIFAR-10 (15% label noise), sweep width multiplier k ∈ {1,2,4,6,8,10,14,20,32,48,64}, 500 epochs | Yixuan (k≤8) + Shurong (k≥10) | Planned |
-| **N1** | (Width × Noise) Phase Diagram | Core contribution: 5×4 grid — k ∈ {2,8,16,32,64}, η ∈ {0%,10%,20%,40%}, 4000-sample CIFAR-10 subset, 4000 epochs | Yixuan (η≤10%) + Shurong (η≥20%) | Planned |
-| **N3** | Weight Decay Ablation | Fix η=15%, k ∈ {4,8,16}; sweep λ ∈ {0,1e-4,5e-4,1e-3,5e-3}; 15 runs | Rui Li | Planned |
-
-### Classification Criteria (N1)
-
-Define **Test Error Gap** = TestErr(η, k) − TestErr(0, k):
-
-| Region | Condition |
-|--------|-----------|
-| Benign | Gap < 2% |
-| Tempered | 2% ≤ Gap < 10% |
-| Catastrophic | Gap ≥ 10% |
-
-### Expected Output Figures
-
-| Figure | Content |
-|--------|---------|
-| Fig. 1 | R2a: Test error vs. width multiplier k (model-wise double-descent curve) |
-| Fig. 2 | N1: Test error heatmap in (k, η) space |
-| Fig. 3 | N1: Four double-descent curves overlaid for η ∈ {0%,10%,20%,40%} |
-| Fig. 4 | N1: Phase diagram — (k, η) plane colored benign / tempered / catastrophic |
-| Fig. 5 | N3: Double-descent curves under different weight decay values |
-
----
-
-## Directory Structure
+## Repository structure
 
 ```
-EECS-6699/
-├── README.md
-├── requirements.txt
-│
-├── src/                        # Shared library code (no training scripts here)
-│   ├── models/                 # ResNet-18 with width multiplier
-│   ├── data/                   # CIFAR-10 loader with label noise injection
-│   ├── training/               # Training loop, SGD + cosine LR schedule
-│   └── utils/                  # Checkpointing, CSV logging, metrics
-│
-├── configs/                    # Per-experiment YAML configuration files
-│   ├── R2a.yaml
-│   ├── N1.yaml
-│   └── N3.yaml
-│
-├── experiments/                # Runnable entry-point scripts
-│   ├── run_R2a.py
-│   ├── run_N1.py
-│   └── run_N3.py
-│
-├── results/                    # Raw outputs: CSV logs, checkpoints (git-ignored large files)
-│   ├── R2a/
-│   ├── N1/
-│   └── N3/
-│
-├── figures/                    # Generated plots (committed after review)
-│   ├── R2a/
-│   ├── N1/
-│   └── N3/
-│
-└── notebooks/                  # Exploratory analysis and figure polishing
+project-6699/
+├── src/
+│   ├── data.py          # CIFAR-10 subset + configurable label noise
+│   ├── train.py         # Training loop (Adam/SGD, checkpointing, JSON logging)
+│   ├── io_utils.py      # save/load results, Google Drive helpers
+│   ├── plot_utils.py    # Unified plotting style (all figures)
+│   └── models/
+│       ├── cnn.py       # CNN5 — 5-layer CNN with width multiplier k
+│       └── resnet.py    # WideResNet18 — ResNet-18 with width multiplier k
+├── run_r1.py            # R1: CNN double descent (22 runs)
+├── run_r2.py            # R2: ResNet-18 double descent (6 runs)
+├── notebooks/
+│   ├── R1_CNN_DoubleDescent.ipynb
+│   └── R2_ResNet_DoubleDescent.ipynb
+├── results/             # Auto-created; JSON results + PNG figures
+└── requirements.txt
 ```
 
----
+## Experiments
 
-## Key Hyperparameters
+| ID | Description | Model | Runs | Script |
+|----|-------------|-------|------|--------|
+| **R1** | CNN double descent (reproduce DD curve) | CNN5 | 22 | `run_r1.py` |
+| **R2** | ResNet-18 validation | WideResNet18 | 6 | `run_r2.py` |
+| N1 | Width × Noise 2-D phase diagram *(coming)* | CNN5 | 60 | — |
+| N2 | Weight-decay ablation *(coming)* | CNN5 | 15 | — |
+| N3 | Activation-function comparison *(coming)* | CNN5 | 12 | — |
 
-| Setting | Value |
-|---------|-------|
-| Optimizer | SGD, momentum = 0.9 |
-| Learning rate | 0.1, linear warmup + cosine decay |
-| Batch size | 128 |
-| R2a epochs | 500 |
-| N1 epochs | 4000 |
-| N1 dataset size | 4000-sample CIFAR-10 subset |
-| N3 width multipliers | k ∈ {4, 8, 16} |
-| N3 weight decay λ | {0, 1e-4, 5e-4, 1e-3, 5e-3} |
-
----
-
-## Literature
-
-| # | Paper |
-|---|-------|
-| P1 | Belkin et al. (2019), *Reconciling modern machine learning practice and the bias-variance trade-off*, PNAS |
-| P2 | Bartlett et al. (2020), *Benign overfitting in linear regression*, PNAS |
-| P3 | Nakkiran et al. (2020), *Deep double descent*, ICLR |
-| P4 | Mallinar et al. (2022), *Benign, tempered, or catastrophic: a taxonomy of overfitting*, NeurIPS |
-| P5 | Frei et al. (2023), *Benign overfitting without linearity* |
-
----
-
-## Deadlines
-
-| Milestone | Date |
-|-----------|------|
-| Presentation | May 4, 2026 (Day 12) |
-| Final paper due | ~May 14, 2026 (Day 19) |
-
----
-
-## Setup
+## Quick start (local)
 
 ```bash
 pip install -r requirements.txt
+python run_r1.py          # runs all 22 R1 jobs, saves results/, plots Fig 1
+python run_r2.py          # runs all 6  R2 jobs, saves results/, plots Fig 2
 ```
 
-See `experiments/` for runnable entry-point scripts.
+Results are saved as JSON in `results/R1/` and `results/R2/`.  
+Re-running is safe — completed runs are automatically skipped (`resume=True`).
+
+## Quick start (Colab)
+
+1. Open `notebooks/R1_CNN_DoubleDescent.ipynb` in Google Colab.
+2. Set `REPO_URL` to your GitHub repo URL in cell 2.
+3. Set `USE_DRIVE = True` to persist results on Google Drive.
+4. Runtime → Change runtime type → **GPU (T4)**.
+5. Run all cells.
+
+To parallelize across multiple Colab accounts, uncomment the width-split block
+in cell 3 of each notebook.
+
+## Shared pipeline contract
+
+All experiments use the same JSON result schema:
+
+```json
+{
+  "experiment":       "R1",
+  "run_id":           "r1_k008_s042",
+  "width_multiplier": 8,
+  "seed":             42,
+  "noise_rate":       0.15,
+  "train_error":      0.012,
+  "test_error":       0.341,
+  "n_params":         47424,
+  "epochs":           300,
+  "wall_time_s":      480,
+  "history":          [...]
+}
+```
+
+N1/N2/N3 runners add extra keys (`weight_decay`, `activation`) but load with the
+same `src.io_utils.load_results()` utility.
+
+## Key design choices
+
+| Choice | Rationale |
+|--------|-----------|
+| CNN5 channels `[k, 2k, 4k]` | Params ≈ O(k²); interpolation threshold visible ~k=8–16 for n=5000 |
+| ResNet channels `[k, 2k, 4k, 8k]` | k=1 gives ~3K params (under-parameterized); DD peak near k=2–4 |
+| Adam lr=1e-3, 300 ep (CNN) | Consistent with Nakkiran et al. (2020) |
+| SGD cosine lr=0.1, 200 ep (ResNet) | Standard ResNet recipe |
+| Checkpoint every 10 ep | Survives Colab disconnects; resume is automatic |
+| Results as JSON | Simple, diffable, loadable by N1–N3 without code changes |
+
+## References
+
+- Nakkiran et al. (2020) *Deep Double Descent* — ICLR 2020
+- Bartlett et al. (2020) *Benign Overfitting in Linear Regression* — PNAS
+- Mallinar et al. (2022) *Benign, Tempered, or Catastrophic* — NeurIPS 2022
