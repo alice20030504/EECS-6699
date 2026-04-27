@@ -131,7 +131,12 @@ def run_r2(cfg: dict, result_dir: str, resume: bool = True) -> list[dict]:
 # ── Plotting ──────────────────────────────────────────────────────────────────
 
 def plot_r2(result_dir: str) -> None:
-    """Load results and save Figure 2."""
+    """Load results and save Figure 2 with interpolation threshold + param-count axis."""
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as mticker
+    from src.models import WideResNet18
+    from src.plot_utils import set_style, PALETTE
+
     results = load_results(result_dir, pattern='r2_*.json')
     if not results:
         print("[plot] No R2 results found — skipping.")
@@ -142,19 +147,67 @@ def plot_r2(result_dir: str) -> None:
 
     train_errors = np.full((len(seeds), len(widths)), np.nan)
     test_errors  = np.full((len(seeds), len(widths)), np.nan)
-
     for r in results:
         si = seeds.index(r['seed'])
         wi = widths.index(r['width_multiplier'])
         train_errors[si, wi] = r['train_error']
         test_errors[si,  wi] = r['test_error']
 
-    save_path = str(Path(result_dir) / 'fig2_r2_dd.png')
-    plot_double_descent(
-        widths, train_errors, test_errors,
-        title='R2 — ResNet-18 Double Descent (n=5000, η=15%)',
-        save_path=save_path,
+    tr_mean = np.nanmean(train_errors, axis=0)
+    te_mean = np.nanmean(test_errors,  axis=0)
+
+    # Interpolation threshold
+    interp_k = None
+    for i, k in enumerate(widths):
+        if tr_mean[i] < 0.02:
+            interp_k = k
+            break
+
+    # Parameter counts
+    param_counts = [WideResNet18(width_multiplier=k).count_params() for k in widths]
+
+    set_style()
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+
+    ax1.plot(widths, tr_mean, 'o-', color=PALETTE['train'], label='Train Error')
+    ax1.plot(widths, te_mean, 's-', color=PALETTE['test'],  label='Test Error')
+
+    if len(seeds) > 1:
+        ax1.fill_between(widths, np.nanmin(train_errors, 0), np.nanmax(train_errors, 0),
+                         alpha=0.15, color=PALETTE['train'])
+        ax1.fill_between(widths, np.nanmin(test_errors, 0),  np.nanmax(test_errors, 0),
+                         alpha=0.15, color=PALETTE['test'])
+
+    if interp_k is not None:
+        ax1.axvline(interp_k, color='gray', linestyle='--', linewidth=1.2, alpha=0.7)
+        ax1.text(interp_k * 1.08, ax1.get_ylim()[1] * 0.95,
+                 f'Interpolation\nthreshold\n$k={interp_k}$',
+                 fontsize=8, color='gray', va='top')
+
+    ax1.set_xscale('log', base=2)
+    ax1.xaxis.set_major_formatter(mticker.ScalarFormatter())
+    ax1.xaxis.set_minor_formatter(mticker.NullFormatter())
+    ax1.set_xticks(widths)
+    ax1.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
+    ax1.set_xlabel('Width Multiplier $k$')
+    ax1.set_ylabel('Error Rate')
+    ax1.set_title('R2 — ResNet-18 Double Descent (n=5000, η=15%)')
+    ax1.legend(loc='upper right')
+
+    ax2 = ax1.twiny()
+    ax2.set_xscale('log', base=2)
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(widths)
+    ax2.set_xticklabels(
+        [f'{p/1e3:.0f}K' if p >= 1000 else str(p) for p in param_counts],
+        fontsize=7, rotation=30,
     )
+    ax2.set_xlabel('Parameter Count', fontsize=9)
+
+    plt.tight_layout()
+    save_path = str(Path(result_dir) / 'fig2_r2_dd.png')
+    fig.savefig(save_path, bbox_inches='tight', dpi=150)
+    plt.close(fig)
     print(f"[plot] Figure 2 saved → {save_path}")
 
 
