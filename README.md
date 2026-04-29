@@ -11,7 +11,7 @@ We investigate the **benign overfitting** phenomenon in deep CNNs by mapping out
 |--------|------|-------------|-------|
 | **Meng (A)** | Theory & Writing | Literature review | Sec 1, 2, 5 (~45%) |
 | **Ye (B)** | Engineering & Reproduction | R1 · R2 · N1 Account A: η ∈ {0%, 5%} | Sec 3.1 (~15%) |
-| **Alice (C)** | Main Experiments | N1 Account B: η ∈ {10%, 20%} | **Sec 4.1 — Phase Diagram (~30%)** |
+| **Alice (C)** | Main Experiments | N1 Account B: η ∈ {10%, 20%} | Sec 4.1 — Phase Diagram (~30%) |
 | **Lyric (D)** | Visualization & Coordination | N3 · N1 Account C: η ∈ {30%, 40%} | Sec 4.3, all figures (~10%) |
 
 ---
