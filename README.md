@@ -1,98 +1,136 @@
 # Benign Overfitting in Overparameterized Neural Networks
-EECS 6699 Project — Spring 2026
+EECS 6699 — Spring 2026
 
-## Overview
-We study the **benign overfitting** phenomenon in deep CNNs by systematically mapping out the **(width × label-noise)** phase diagram on CIFAR-10.
+We investigate the **benign overfitting** phenomenon in deep CNNs by mapping out a **(width × label-noise)** phase diagram on CIFAR-10 and reproducing model-wise double descent from Nakkiran et al. (2020).
 
-## Repository structure
+---
 
-```
-project-6699/
-├── src/
-│   ├── data.py          # CIFAR-10 subset + configurable label noise
-│   ├── train.py         # Training loop (Adam/SGD, checkpointing, JSON logging)
-│   ├── io_utils.py      # save/load results, Google Drive helpers
-│   ├── plot_utils.py    # Unified plotting style (all figures)
-│   └── models/
-│       ├── cnn.py       # CNN5 — 5-layer CNN with width multiplier k
-│       └── resnet.py    # WideResNet18 — ResNet-18 with width multiplier k
-├── run_r1.py            # R1: CNN double descent (22 runs)
-├── run_r2.py            # R2: ResNet-18 double descent (6 runs)
-├── notebooks/
-│   ├── R1_CNN_DoubleDescent.ipynb
-│   └── R2_ResNet_DoubleDescent.ipynb
-├── results/             # Auto-created; JSON results + PNG figures
-└── requirements.txt
-```
+## Team
+
+| Member | Role | Experiments | Paper |
+|--------|------|-------------|-------|
+| **Meng (A)** | Theory & Writing | Literature review | Sec 1, 2, 5 (~45%) |
+| **Ye (B)** | Engineering & Reproduction | R1 · R2 · N1 Account A: η ∈ {0%, 5%} | Sec 3.1 (~15%) |
+| **Alice (C)** | Main Experiments | N1 Account B: η ∈ {10%, 20%} | **Sec 4.1 — Phase Diagram (~30%)** |
+| **Lyric (D)** | Visualization & Coordination | N3 · N1 Account C: η ∈ {30%, 40%} | Sec 4.3, all figures (~10%) |
+
+---
 
 ## Experiments
 
 | ID | Description | Model | Runs | Script |
 |----|-------------|-------|------|--------|
-| **R1** | CNN double descent (reproduce DD curve) | CNN5 | 22 | `run_r1.py` |
-| **R2** | ResNet-18 validation | WideResNet18 | 6 | `run_r2.py` |
-| N1 | Width × Noise 2-D phase diagram *(coming)* | CNN5 | 60 | — |
-| N2 | Weight-decay ablation *(coming)* | CNN5 | 15 | — |
-| N3 | Activation-function comparison *(coming)* | CNN5 | 12 | — |
+| **R1** | CNN5 model-wise double descent on CIFAR-10 (η=15%) | CNN5 | 22 | `run_r1.py` |
+| **R2** | ResNet-18 double descent — validates R1 generalises to deeper arch | WideResNet18 | 6 | `run_r2.py` |
+| **N1** | (Width × Noise) 2D phase diagram — core contribution | CNN5 | 72 | `run_n1.py` |
+| **N3** | Weight-decay ablation — does regularisation eliminate the DD peak? | CNN5 | 15 | *(run_n3.py — TBD)* |
 
-## Quick start (local)
+### N1 Grid
 
-```bash
-pip install -r requirements.txt
-python run_r1.py          # runs all 22 R1 jobs, saves results/, plots Fig 1
-python run_r2.py          # runs all 6  R2 jobs, saves results/, plots Fig 2
+k ∈ {2, 4, 8, 16, 32, 64} × η ∈ {0%, 5%, 10%, 20%, 30%, 40%} × 2 seeds = **72 runs**
+
+| Noise rates | Colab account | Owner |
+|-------------|---------------|-------|
+| η = 0%, 5% | Account A | Ye |
+| η = 10%, 20% | Account B | Alice |
+| η = 30%, 40% | Account C | Lyric |
+
+**Phase classification** — Test Error Gap Δ = TestErr(η, k) − TestErr(0, k):
+benign Δ < 3% · tempered 3–10% · catastrophic ≥ 10%
+
+After all 72 runs complete, `run_n1.py --plot_only` fits the empirical boundary
+**w\_benign ≈ c · η^α** and writes `results/N1/benign_boundary_fit.json`.
+
+---
+
+## Repository
+
+```
+EECS-6699/
+├── docs/                    # Project plan + course guidelines
+├── src/
+│   ├── data.py              # CIFAR-10 subset with symmetric label noise
+│   ├── train.py             # Training loop (Adam/SGD, checkpointing, JSON logging)
+│   ├── io_utils.py          # Result I/O + Google Drive helpers
+│   ├── plot_utils.py        # Shared matplotlib style and colour palette
+│   └── models/
+│       ├── cnn.py           # CNN5 — 5-layer CNN, width multiplier k
+│       └── resnet.py        # WideResNet18 — ResNet-18, width multiplier k
+├── run_r1.py                # R1 runner
+├── R1_CNN_DoubleDescent.ipynb       # Colab notebook for R1
+├── run_r2.py                # R2 runner
+├── R2_ResNet_DoubleDescent.ipynb    # Colab notebook for R2
+├── run_n1.py                # N1 runner (supports --noise_rates for parallelism)
+├── N1_PhaseDiagram.ipynb            # Colab notebook for N1
+├── results/                 # Auto-created; JSON + figures per experiment
+│   ├── R1/   R2/   N1/   N3/
+└── requirements.txt
 ```
 
-Results are saved as JSON in `results/R1/` and `results/R2/`.  
-Re-running is safe — completed runs are automatically skipped (`resume=True`).
+---
 
-## Quick start (Colab)
+## Quickstart
 
-1. Open `notebooks/R1_CNN_DoubleDescent.ipynb` in Google Colab.
-2. Set `REPO_URL` to your GitHub repo URL in cell 2.
-3. Set `USE_DRIVE = True` to persist results on Google Drive.
-4. Runtime → Change runtime type → **GPU (T4)**.
-5. Run all cells.
+**Local**
+```bash
+pip install -r requirements.txt
+python run_r1.py
+python run_r2.py
+python run_n1.py --noise_rates 0.10 0.20   # Alice's portion
+```
 
-To parallelize across multiple Colab accounts, uncomment the width-split block
-in cell 3 of each notebook.
+**Colab (recommended — GPU required)**
+1. Open `N1_PhaseDiagram.ipynb` → Runtime → GPU (T4)
+2. Set your GitHub PAT in cell 2
+3. In cell 3, uncomment your account's `MY_NOISE_RATES` line
+4. Run all cells — results stream to Google Drive and resume automatically
 
-## Shared pipeline contract
+Results are written as JSON to `results/<EXP>/`. Completed runs are skipped on re-run.
 
-All experiments use the same JSON result schema:
+---
+
+## Result Schema
+
+All experiments share a common JSON format:
 
 ```json
 {
-  "experiment":       "R1",
-  "run_id":           "r1_k008_s042",
-  "width_multiplier": 8,
+  "experiment":       "N1",
+  "run_id":           "n1_k016_eta020_s42",
+  "width_multiplier": 16,
+  "noise_rate":       0.20,
   "seed":             42,
-  "noise_rate":       0.15,
-  "train_error":      0.012,
-  "test_error":       0.341,
-  "n_params":         47424,
+  "train_error":      0.004,
+  "test_error":       0.387,
+  "n_params":         152834,
   "epochs":           300,
-  "wall_time_s":      480,
+  "wall_time_s":      1820,
   "history":          [...]
 }
 ```
 
-N1/N2/N3 runners add extra keys (`weight_decay`, `activation`) but load with the
-same `src.io_utils.load_results()` utility.
+Load with `src.io_utils.load_results(result_dir)`. N3 adds a `weight_decay` field.
 
-## Key design choices
+---
 
-| Choice | Rationale |
-|--------|-----------|
-| CNN5 channels `[k, 2k, 4k]` | Params ≈ O(k²); interpolation threshold visible ~k=8–16 for n=5000 |
-| ResNet channels `[k, 2k, 4k, 8k]` | k=1 gives ~3K params (under-parameterized); DD peak near k=2–4 |
-| Adam lr=1e-3, 300 ep (CNN) | Consistent with Nakkiran et al. (2020) |
-| SGD cosine lr=0.1, 200 ep (ResNet) | Standard ResNet recipe |
-| Checkpoint every 10 ep | Survives Colab disconnects; resume is automatic |
-| Results as JSON | Simple, diffable, loadable by N1–N3 without code changes |
+## Paper Outline
+
+| Section | Pages | Owner |
+|---------|-------|-------|
+| 1. Introduction | 1.5 | Meng |
+| 2. Problem Description | 3.0 | Meng |
+| 3. Reproduction (R1/R2) | 2.5 | Ye |
+| 4.1 Phase Diagram (N1) | 3.5 | **Alice** |
+| 4.2 Weight Decay (N3) | 2.0 | Lyric |
+| 5. Discussion & Conclusion | 2.0 | Meng |
+| References & Appendix | 0.5 | All |
+
+---
 
 ## References
 
-- Nakkiran et al. (2020) *Deep Double Descent* — ICLR 2020
+- Nakkiran et al. (2020) *Deep Double Descent* — ICLR
 - Bartlett et al. (2020) *Benign Overfitting in Linear Regression* — PNAS
-- Mallinar et al. (2022) *Benign, Tempered, or Catastrophic* — NeurIPS 2022
+- Mallinar et al. (2022) *Benign, Tempered, or Catastrophic: Overparameterization in Regression* — NeurIPS
+- Belkin et al. (2019) *Reconciling Modern Machine Learning and the Bias-Variance Trade-off* — PNAS
+- Frei et al. (2023) *Benign Overfitting without Linearity* — ICML
