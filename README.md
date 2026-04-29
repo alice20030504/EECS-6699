@@ -120,7 +120,7 @@ Load with `src.io_utils.load_results(result_dir)`. N3 adds a `weight_decay` fiel
 | 1. Introduction | 1.5 | Meng |
 | 2. Problem Description | 3.0 | Meng |
 | 3. Reproduction (R1/R2) | 2.5 | Ye |
-| 4.1 Phase Diagram (N1) | 3.5 | **Alice** |
+| 4.1 Phase Diagram (N1) | 3.5 | Alice |
 | 4.2 Weight Decay (N3) | 2.0 | Lyric |
 | 5. Discussion & Conclusion | 2.0 | Meng |
 | References & Appendix | 0.5 | All |
