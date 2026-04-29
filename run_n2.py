@@ -4,7 +4,7 @@ This supplementary experiment asks whether the double-descent peak is reduced
 or removed by explicit L2 regularization. It is a follow-up to N1: we reuse the
 same CNN5/CIFAR-10 subset/training setup, fix a representative noise level
 near the double-descent setting (eta=15%), and sweep weight decay over widths
-near the N1/R1 interpolation peak.
+spanning the transition into the N1/R1 interpolation peak.
 
 Outputs
 -------
@@ -50,7 +50,7 @@ N2_CONFIG = {
     "batch_size": N1_CONFIG["batch_size"],
     "activation": N1_CONFIG["activation"],
     "n_classes": N1_CONFIG["n_classes"],
-    "widths": [4, 8, 16],
+    "widths": [2, 4, 8, 16],
     "weight_decays": [0.0, 1e-4, 1e-3, 1e-2, 1e-1],
     "seeds": [42],
     "optimizer": N1_CONFIG["optimizer"],
@@ -215,14 +215,59 @@ def _plot_weight_decay(rows: list[dict], result_dir: str) -> None:
     set_style()
     fig, ax = plt.subplots(figsize=(8, 5))
     wds = sorted(by_wd)
-    colors = [plt.cm.Blues(0.35 + 0.55 * i / max(len(wds) - 1, 1)) for i in range(len(wds))]
+    emphasis = {
+        0.0: {
+            "color": PALETTE["catastrophic"],
+            "label": "wd=0 (no regularization)",
+            "linewidth": 2.8,
+            "markersize": 6.5,
+            "alpha": 1.0,
+            "zorder": 4,
+        },
+        1e-2: {
+            "color": PALETTE["train"],
+            "label": "wd=1e-2 (moderate)",
+            "linewidth": 2.8,
+            "markersize": 6.5,
+            "alpha": 1.0,
+            "zorder": 4,
+        },
+        1e-1: {
+            "color": PALETTE["tempered"],
+            "label": "wd=1e-1 (strong)",
+            "linewidth": 2.8,
+            "markersize": 6.5,
+            "alpha": 1.0,
+            "zorder": 4,
+        },
+    }
 
-    for wd, color in zip(wds, colors):
+    for wd in wds:
         wd_rows = sorted(by_wd[wd], key=lambda r: r["k"])
         widths = [r["k"] for r in wd_rows]
         test_errors = [r["test_error"] for r in wd_rows]
-        label = "wd=0" if wd == 0 else f"wd={wd:.0e}"
-        ax.plot(widths, test_errors, "o-", color=color, label=label)
+        style = emphasis.get(
+            wd,
+            {
+                "color": "0.55",
+                "label": f"wd={wd:.0e} (minor)",
+                "linewidth": 1.4,
+                "markersize": 4.5,
+                "alpha": 0.45,
+                "zorder": 2,
+            },
+        )
+        ax.plot(
+            widths,
+            test_errors,
+            "o--" if wd not in emphasis else "o-",
+            color=style["color"],
+            label=style["label"],
+            linewidth=style["linewidth"],
+            markersize=style["markersize"],
+            alpha=style["alpha"],
+            zorder=style["zorder"],
+        )
 
     ax.set_xscale("log", base=2)
     ax.xaxis.set_major_formatter(mticker.ScalarFormatter())

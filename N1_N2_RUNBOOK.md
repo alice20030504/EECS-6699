@@ -66,10 +66,10 @@ Canonical grid:
 - Model: CNN5
 - Dataset: CIFAR-10, fixed 5000-sample training subset
 - Noise rate: `0.15`
-- Widths: `4, 8, 16`
+- Widths: `2, 4, 8, 16`
 - Weight decays: `0, 1e-4, 1e-3, 1e-2, 1e-1`
 - Seed: `42`
-- Total: `3 x 5 = 15` training runs
+- Total: `4 x 5 = 20` training runs
 
 Run the full sweep:
 
@@ -81,6 +81,7 @@ Run a subset:
 
 ```bash
 python run_n2.py --weight_decays 0 0.0001 0.001
+python run_n2.py --widths 2
 python run_n2.py --widths 8 16
 ```
 
@@ -95,6 +96,12 @@ Outputs:
 - `results/N2/n2_*.json`
 - `results/N2/n2_summary.csv`
 - `results/N2/fig6_n2_weight_decay.png`
+
+Figure 6 keeps all five weight-decay curves for completeness, but visually
+emphasizes the three most interpretable settings: `wd=0` as no explicit
+regularization, `wd=1e-2` as the moderate setting that can flatten the peak,
+and `wd=1e-1` as the over-regularized setting. The near-baseline settings
+`1e-4` and `1e-3` are drawn as faded reference curves.
 
 ## CSV single-point runners
 

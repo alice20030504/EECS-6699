@@ -13,7 +13,7 @@ data:
 model:
   arch: cnn5
   activation: relu
-  width_multipliers: [4, 8, 16]
+  width_multipliers: [2, 4, 8, 16]
 
 weight_decays: [0.0, 1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1]
 seeds: [42]
