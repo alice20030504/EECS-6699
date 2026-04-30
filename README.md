@@ -12,18 +12,19 @@ We investigate the **benign overfitting** phenomenon in deep CNNs by mapping out
 | **Meng (A)** | Theory & Writing | Literature review | Sec 1, 2, 5 (~45%) |
 | **Ye (B)** | Engineering & Reproduction | R1 · R2 · N1 Account A: η ∈ {0%, 5%} | Sec 3.1 (~15%) |
 | **Alice (C)** | Main Experiments | N1 Account B: η ∈ {10%, 20%} | Sec 4.1 — Phase Diagram (~30%) |
-| **Lyric (D)** | Visualization & Coordination | N3 · N1 Account C: η ∈ {30%, 40%} | Sec 4.3, all figures (~10%) |
+| **Lyric (D)** | Visualization & Coordination | N2 · N3 · N1 Account C: η ∈ {30%, 40%} | Sec 4.2, 4.3, all figures (~10%) |
 
 ---
 
 ## Experiments
 
-| ID | Description | Model | Runs | Script |
-|----|-------------|-------|------|--------|
-| **R1** | CNN5 model-wise double descent on CIFAR-10 (η=15%) | CNN5 | 22 | `run_r1.py` |
-| **R2** | ResNet-18 double descent — validates R1 generalises to deeper arch | WideResNet18 | 6 | `run_r2.py` |
-| **N1** | (Width × Noise) 2D phase diagram — core contribution | CNN5 | 72 | `run_n1.py` |
-| **N3** | Weight-decay ablation — does regularisation eliminate the DD peak? | CNN5 | 15 | *(run_n3.py — TBD)* |
+| ID | Description | Model | Runs | Script | Notebook |
+|----|-------------|-------|------|--------|----------|
+| **R1** | CNN5 model-wise double descent on CIFAR-10 (η=15%) | CNN5 | 22 | `run_r1.py` | `R1_CNN_DoubleDescent.ipynb` |
+| **R2** | ResNet-18 double descent — validates R1 generalises to deeper arch | WideResNet18 | 6 | `run_r2.py` | `R2_ResNet_DoubleDescent.ipynb` |
+| **N1** | (Width × Noise) 2D phase diagram — core contribution | CNN5 | 72 | `run_n1.py` | `N1_PhaseDiagram.ipynb` |
+| **N2** | Weight-decay ablation — does L2 regularisation eliminate the DD peak? | CNN5 | 20 | `run_n2.py` | — |
+| **N3** | Activation comparison — do smooth activations (GELU/Tanh) shift the peak? | CNN5 | 12 | `run_n3.py` | `N3_ActivationComparison.ipynb` |
 
 ### N1 Grid
 
@@ -54,7 +55,7 @@ EECS-6699/
 │   ├── io_utils.py          # Result I/O + Google Drive helpers
 │   ├── plot_utils.py        # Shared matplotlib style and colour palette
 │   └── models/
-│       ├── cnn.py           # CNN5 — 5-layer CNN, width multiplier k
+│       ├── cnn.py           # CNN5 — 5-layer CNN, width multiplier k, activation-swappable
 │       └── resnet.py        # WideResNet18 — ResNet-18, width multiplier k
 ├── run_r1.py                # R1 runner
 ├── R1_CNN_DoubleDescent.ipynb       # Colab notebook for R1
@@ -62,8 +63,12 @@ EECS-6699/
 ├── R2_ResNet_DoubleDescent.ipynb    # Colab notebook for R2
 ├── run_n1.py                # N1 runner (supports --noise_rates for parallelism)
 ├── N1_PhaseDiagram.ipynb            # Colab notebook for N1
+├── run_n2.py                # N2 runner (weight-decay ablation)
+├── run_n3.py                # N3 runner (activation comparison)
+├── N3_ActivationComparison.ipynb    # Colab notebook for N3
+├── N1_N2_N3_RUNBOOK.md      # Detailed runbook for N1, N2, N3
 ├── results/                 # Auto-created; JSON + figures per experiment
-│   ├── R1/   R2/   N1/   N3/
+│   ├── R1/   R2/   N1/   N2/   N3/
 └── requirements.txt
 ```
 
@@ -80,10 +85,17 @@ python run_n1.py --noise_rates 0.10 0.20   # Alice's portion
 ```
 
 **Colab (recommended — GPU required)**
+
+*N1 (parallelised across 3 accounts):*
 1. Open `N1_PhaseDiagram.ipynb` → Runtime → GPU (T4)
 2. Set your GitHub PAT in cell 2
 3. In cell 3, uncomment your account's `MY_NOISE_RATES` line
 4. Run all cells — results stream to Google Drive and resume automatically
+
+*N3 (single account, ~2 h):*
+1. Open `N3_ActivationComparison.ipynb` → Runtime → GPU (T4)
+2. Set your GitHub PAT in cell 2
+3. Run all cells — 12 runs complete sequentially, results saved to Drive
 
 Results are written as JSON to `results/<EXP>/`. Completed runs are skipped on re-run.
 
@@ -109,7 +121,8 @@ All experiments share a common JSON format:
 }
 ```
 
-Load with `src.io_utils.load_results(result_dir)`. N3 adds a `weight_decay` field.
+Load with `src.io_utils.load_results(result_dir)`.  
+N2 adds a `weight_decay` field. N3 adds an `activation` field.
 
 ---
 
@@ -121,7 +134,8 @@ Load with `src.io_utils.load_results(result_dir)`. N3 adds a `weight_decay` fiel
 | 2. Problem Description | 3.0 | Meng |
 | 3. Reproduction (R1/R2) | 2.5 | Ye |
 | 4.1 Phase Diagram (N1) | 3.5 | Alice |
-| 4.2 Weight Decay (N3) | 2.0 | Lyric |
+| 4.2 Weight Decay (N2) | 1.5 | Lyric |
+| 4.3 Activation Comparison (N3) | 2.0 | Lyric |
 | 5. Discussion & Conclusion | 2.0 | Meng |
 | References & Appendix | 0.5 | All |
 
