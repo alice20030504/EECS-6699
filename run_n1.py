@@ -67,8 +67,11 @@ N1_CONFIG = {
     'epochs':        300,
     # Phase thresholds — per-column baseline (same k at η=0%)
     # Relaxed vs. original plan: wider benign/tempered bands fit empirical results
-    'benign_thresh':     0.05,   # Δ < 5%
-    'tempered_thresh':   0.15,   # 5% ≤ Δ < 15%
+    'benign_thresh':          0.05,   # Δ < 5%   (for Fig 5 phase diagram)
+    'tempered_thresh':        0.15,   # 5% ≤ Δ < 15%
+    # Boundary fit threshold — more generous, answers:
+    # "how wide to get within X% of global optimum despite noise?"
+    'boundary_fit_thresh':    0.15,   # absolute: TestErr < global_min + 15%
 }
 
 
@@ -373,8 +376,8 @@ def _fit_benign_boundary(widths, noises, te_matrix, baseline_global, cfg, result
     """
     import matplotlib.pyplot as plt
 
-    bt = cfg['benign_thresh']
-    absolute_threshold = baseline_global + bt   # e.g. 33.4% + 5% = 38.4%
+    bt = cfg.get('boundary_fit_thresh', 0.15)   # generous threshold for boundary fit
+    absolute_threshold = baseline_global + bt
 
     boundary = {}   # η → min k achieving near-optimal performance
     for ni, eta in enumerate(noises):
