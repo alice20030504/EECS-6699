@@ -6,8 +6,16 @@ Kernel (NTK) framework, smooth activations have different spectral properties
 which can move the boundary of the benign overfitting region.
 
 Setup mirrors N2: same CNN5/CIFAR-10 subset, fixed noise eta=15%, but now we
-sweep activations (ReLU / GELU / Tanh) at widths spanning the interpolation
-peak identified in N1.
+sweep activations (ReLU / GELU / Tanh) across widths that cover both the
+under-parameterized regime AND the interpolation peak identified in N1.
+
+Width range: [1, 2, 3, 4, 6, 8, 16, 32]
+- k=1..4  : under-parameterized / peak region  (H4 hypothesis requires this)
+- k=6..32 : over-parameterized / benign region
+
+Previously only [4, 8, 16, 32] were used; k<4 was skipped, making the peak
+invisible and leaving H4 untestable. The first batch of results (k=4,8,16,32)
+is preserved — resume=True skips completed runs automatically.
 
 Outputs
 -------
@@ -20,7 +28,7 @@ Usage
 python run_n3.py
 python run_n3.py --plot_only
 python run_n3.py --activations relu gelu
-python run_n3.py --widths 4 8 16
+python run_n3.py --widths 1 2 3       # supplement peak-region runs only
 python run_n3.py --drive
 """
 from __future__ import annotations
@@ -56,7 +64,10 @@ N3_CONFIG = {
     "data_seed": N1_CONFIG["data_seed"],
     "batch_size": N1_CONFIG["batch_size"],
     "n_classes": N1_CONFIG["n_classes"],
-    "widths": [4, 8, 16, 32],
+    # Covers both the under-parameterized/peak region (k=1..4) and the
+    # benign region (k=6..32) so that the H4 hypothesis is testable.
+    # k=4,8,16,32 results from the first batch are auto-skipped (resume=True).
+    "widths": [1, 2, 3, 4, 6, 8, 16, 32],
     "activations": ["relu", "gelu", "tanh"],
     "seeds": [42],
     "optimizer": N1_CONFIG["optimizer"],

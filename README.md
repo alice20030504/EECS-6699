@@ -24,7 +24,7 @@ We investigate the **benign overfitting** phenomenon in deep CNNs by mapping out
 | **R2** | ResNet-18 double descent — validates R1 generalises to deeper arch | WideResNet18 | 6 | `run_r2.py` | `R2_ResNet_DoubleDescent.ipynb` |
 | **N1** | (Width × Noise) 2D phase diagram — core contribution | CNN5 | 72 | `run_n1.py` | `N1_PhaseDiagram.ipynb` |
 | **N2** | Weight-decay ablation — does L2 regularisation eliminate the DD peak? | CNN5 | 20 | `run_n2.py` | — |
-| **N3** | Activation comparison — do smooth activations (GELU/Tanh) shift the peak? | CNN5 | 12 | `run_n3.py` | `N3_ActivationComparison.ipynb` |
+| **N3** | Activation comparison — do smooth activations (GELU/Tanh) shift the peak? | CNN5 | 24 | `run_n3.py` | `N3_ActivationComparison.ipynb` |
 
 ### N1 Grid
 

@@ -120,10 +120,16 @@ Canonical grid:
 - Model: CNN5
 - Dataset: CIFAR-10, fixed 5000-sample training subset
 - Noise rate: `0.15` (same as N2)
-- Widths: `4, 8, 16, 32`
+- Widths: `1, 2, 3, 4, 6, 8, 16, 32`
+  - `k=1..4`: under-parameterized / DD peak region ← required to test H4
+  - `k=6..32`: over-parameterized / benign region
 - Activations: `relu`, `gelu`, `tanh`
 - Seed: `42`
-- Total: `4 x 3 = 12` training runs
+- Total: `8 x 3 = 24` training runs
+
+> **Note on resuming the first batch:** If k={4,8,16,32} results already exist
+> in the result directory, `run_n3.py` auto-skips them (resume=True default).
+> Only the 12 new peak-region runs (k=1,2,3,6) will be trained (~1.5 h).
 
 Run the full sweep:
 
@@ -131,11 +137,16 @@ Run the full sweep:
 python run_n3.py
 ```
 
-Run a subset:
+Run only the peak-region supplement (if benign-region results already exist):
+
+```bash
+python run_n3.py --widths 1 2 3 6
+```
+
+Run a subset of activations:
 
 ```bash
 python run_n3.py --activations relu gelu
-python run_n3.py --widths 8 16
 ```
 
 Regenerate plots from existing JSON results:
@@ -151,9 +162,13 @@ Outputs:
 - `results/N3/fig7_n3_activation.png`
 
 Figure 7 plots three test-error-vs-width curves (one per activation) on a
-log₂ x-axis. Key observations to record: peak position (which k), peak height
-(maximum test error), and curve shape in the benign region (large k).
-A null result (curves nearly identical) is also a valid finding.
+log₂ x-axis. With the full width range [1..32], the plot should show:
+- The DD peak (local maximum around k=2–6 for η=15%)
+- The benign descent at large k
+
+Key observations to record: peak position (which k), peak height (maximum
+test error), and whether smooth activations (GELU/Tanh) produce a lower or
+wider peak than ReLU. A null result (curves nearly identical) is also valid.
 
 ## CSV single-point runners
 
