@@ -127,17 +127,13 @@ Canonical grid:
 - Seed: `42`
 - Total: `8 x 3 = 24` training runs
 
-> **Note on resuming the first batch:** If k={4,8,16,32} results already exist
-> in the result directory, `run_n3.py` auto-skips them (resume=True default).
-> Only the 12 new peak-region runs (k=1,2,3,6) will be trained (~1.5 h).
-
 Run the full sweep:
 
 ```bash
 python run_n3.py
 ```
 
-Run only the peak-region supplement (if benign-region results already exist):
+Run a subset of widths:
 
 ```bash
 python run_n3.py --widths 1 2 3 6
