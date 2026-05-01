@@ -50,7 +50,7 @@ N2_CONFIG = {
     "batch_size": N1_CONFIG["batch_size"],
     "activation": N1_CONFIG["activation"],
     "n_classes": N1_CONFIG["n_classes"],
-    "widths": [2, 4, 8, 16],
+    "widths": [2, 4, 6, 8, 16],
     "weight_decays": [0.0, 1e-4, 1e-3, 1e-2, 1e-1],
     "seeds": [42],
     "optimizer": N1_CONFIG["optimizer"],

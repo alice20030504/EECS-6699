@@ -66,10 +66,10 @@ Canonical grid:
 - Model: CNN5
 - Dataset: CIFAR-10, fixed 5000-sample training subset
 - Noise rate: `0.15`
-- Widths: `2, 4, 8, 16`
+- Widths: `2, 4, 6, 8, 16`
 - Weight decays: `0, 1e-4, 1e-3, 1e-2, 1e-1`
 - Seed: `42`
-- Total: `4 x 5 = 20` training runs
+- Total: `5 x 5 = 25` training runs
 
 Run the full sweep:
 
@@ -82,6 +82,7 @@ Run a subset:
 ```bash
 python run_n2.py --weight_decays 0 0.0001 0.001
 python run_n2.py --widths 2
+python run_n2.py --widths 6
 python run_n2.py --widths 8 16
 ```
 
@@ -102,6 +103,10 @@ emphasizes the three most interpretable settings: `wd=0` as no explicit
 regularization, `wd=1e-2` as the moderate setting that can flatten the peak,
 and `wd=1e-1` as the over-regularized setting. The near-baseline settings
 `1e-4` and `1e-3` are drawn as faded reference curves.
+
+The `k=6` point is included because R1 identified it as the approximate
+interpolation threshold at `eta=15%`, making it the most important location for
+showing the double-descent peak and whether weight decay suppresses it.
 
 ## N3: Activation Function Comparison on Top of N1/N2
 
