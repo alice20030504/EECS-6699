@@ -203,8 +203,8 @@ def plot_n1(result_dir: str, cfg: dict = None) -> None:
     _plot_phase_diagram(widths, noises, te_matrix,
                         baseline_per_k, baseline_global, cfg, result_dir)
 
-    # ── Benign boundary fit ───────────────────────────────────────────────
-    _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_dir)
+    # ── Benign boundary fit (uses global baseline) ───────────────────────
+    _fit_benign_boundary(widths, noises, te_matrix, baseline_global, cfg, result_dir)
 
 
 def _plot_heatmap(widths, noises, te_matrix, result_dir):
@@ -361,17 +361,22 @@ def _plot_phase_diagram(widths, noises, te_matrix,
     print(f"[plot] Fig 5 saved → {path}")
 
 
-def _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_dir):
+def _fit_benign_boundary(widths, noises, te_matrix, baseline_global, cfg, result_dir):
     """
-    For each η, find the smallest k that satisfies the benign condition.
+    Benign boundary: for each η, find the smallest k such that
+        TestErr(k, η) < baseline_global + benign_thresh
+    where baseline_global = min TestErr at η=0 (best achievable performance).
+
+    This answers: "how wide does the network need to be to perform
+    near-optimally despite noise level η?"
     Fit w_benign(η) ≈ c · η^α via log-log linear regression.
-    Save a summary table and an extra figure.
     """
     import matplotlib.pyplot as plt
 
     bt = cfg['benign_thresh']
+    absolute_threshold = baseline_global + bt   # e.g. 33.4% + 5% = 38.4%
 
-    boundary = {}   # η → min benign k (or None)
+    boundary = {}   # η → min k achieving near-optimal performance
     for ni, eta in enumerate(noises):
         if eta == 0.0:
             continue
@@ -379,9 +384,9 @@ def _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_
             val = te_matrix[ni, wi]
             if np.isnan(val):
                 continue
-            if (val - baseline_per_k[wi]) < bt:
+            if val < absolute_threshold:
                 boundary[eta] = k
-                break   # first (smallest) benign k found
+                break   # first (smallest) k that meets the criterion
 
     if len(boundary) < 2:
         print("[boundary] Not enough benign points for curve fitting.")
@@ -397,15 +402,18 @@ def _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_
     c = np.exp(log_c)
 
     print(f"\n[boundary] Empirical benign boundary fit:")
+    print(f"  Criterion: TestErr(k,η) < {baseline_global*100:.1f}% + {bt*100:.0f}% = {absolute_threshold*100:.1f}%")
     print(f"  w_benign(η) ≈ {c:.2f} · η^{alpha:.3f}")
     print(f"  Data points: η={list(etas_b)}, k={list(ks_b)}")
 
     # Save fit result
     fit_result = {
-        'formula': f'w_benign = {c:.4f} * eta^{alpha:.4f}',
-        'c':       c,
-        'alpha':   alpha,
-        'data':    {f'{η:.2f}': int(k) for η, k in zip(etas_b, ks_b)},
+        'formula':             f'w_benign = {c:.4f} * eta^{alpha:.4f}',
+        'c':                   c,
+        'alpha':               alpha,
+        'baseline_global':     baseline_global,
+        'absolute_threshold':  absolute_threshold,
+        'data':                {f'{η:.2f}': int(k) for η, k in zip(etas_b, ks_b)},
     }
     fit_path = Path(result_dir) / 'benign_boundary_fit.json'
     with open(fit_path, 'w') as f:
@@ -430,8 +438,11 @@ def _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_
     ax.yaxis.set_major_formatter(mticker.ScalarFormatter())
     ax.xaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=0))
     ax.set_xlabel('Label Noise Rate $\\eta$')
-    ax.set_ylabel('Min Benign Width $k$')
-    ax.set_title('Empirical Benign Boundary $w_{\\rm benign}(\\eta)$')
+    ax.set_ylabel('Min Width $k$ for Near-Optimal Performance')
+    ax.set_title(
+        f'Fig 5b — Empirical Benign Boundary $w_{{\\rm benign}}(\\eta)$\n'
+        f'(criterion: TestErr $<$ {baseline_global*100:.1f}% + {bt*100:.0f}% = {absolute_threshold*100:.1f}%)'
+    )
     ax.legend()
 
     plt.tight_layout()
