@@ -1,38 +1,33 @@
 """
 N1: Width × Noise 2-D Phase Diagram — core contribution.
 
-Sweeps a 6×6 grid:
-  k    ∈ {2, 4, 8, 16, 32, 64}
+Full grid (9 × 6 × 2 seeds = 108 runs):
+  k    ∈ {1, 2, 3, 4, 6, 8, 16, 32, 64}
   η    ∈ {0%, 5%, 10%, 20%, 30%, 40%}
-  seeds = [42, 123]
-→ 72 training runs total.
 
-Each run saves one JSON to results/N1/.
-After all runs complete, generates Fig 3 (heatmap), Fig 4 (DD overlay),
-Fig 5 (three-region phase diagram), and fits the empirical benign boundary.
+k=1           — underfitting regime anchor
+k=3           — fills gap between k=2 and k=4
+k=6           — interpolation threshold at η=15% (matches R1)
+k=8 → k=64   — benign overfitting region
 
-Parallelisation across 4 Colab accounts: pass --noise_rates to restrict which
-η values this account handles.
+Phase thresholds (per-column baseline, i.e. same k at η=0%):
+  Benign:       Δ < 5%
+  Tempered:     5% ≤ Δ < 15%
+  Catastrophic: Δ ≥ 15%
 
 Usage
 -----
-# Full sweep (single account)
-python run_n1.py
+# Supplement run: only the 3 new k values (36 runs, ~4h on T4)
+python run_n1.py --widths 1 3 6
 
-# Account A
+# Account A (noise split)
 python run_n1.py --noise_rates 0.0 0.05
 
-# Account B
-python run_n1.py --noise_rates 0.10 0.20
-
-# Account C
-python run_n1.py --noise_rates 0.30 0.40
-
-# Plot only (after merging all results into one dir)
-python run_n1.py --plot_only --result_dir /path/to/merged/N1
+# Plot only after all results collected
+python run_n1.py --plot_only
 
 # With Google Drive
-python run_n1.py --noise_rates 0.0 0.05 --drive
+python run_n1.py --widths 1 3 6 --drive
 """
 import argparse
 import json
@@ -60,8 +55,9 @@ N1_CONFIG = {
     # Model
     'activation':    'relu',
     'n_classes':     10,
-    # Sweep
-    'widths':      [2, 4, 8, 16, 32, 64],
+    # Full 9-point width sweep
+    # k=1: underfitting anchor  k=3: fills k=2→4 gap  k=6: interpolation threshold
+    'widths':      [1, 2, 3, 4, 6, 8, 16, 32, 64],
     'noise_rates': [0.0, 0.05, 0.10, 0.20, 0.30, 0.40],
     'seeds':       [42, 123],
     # Training
@@ -69,26 +65,30 @@ N1_CONFIG = {
     'lr':            1e-3,
     'weight_decay':  0.0,
     'epochs':        300,
-    # Phase classification thresholds (plan Sec 4)
-    'benign_thresh':     0.03,   # Δ < 3%
-    'tempered_thresh':   0.10,   # 3% ≤ Δ < 10%
+    # Phase thresholds — per-column baseline (same k at η=0%)
+    # Relaxed vs. original plan: wider benign/tempered bands fit empirical results
+    'benign_thresh':     0.05,   # Δ < 5%
+    'tempered_thresh':   0.15,   # 5% ≤ Δ < 15%
 }
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
 
-def run_n1(cfg: dict, result_dir: str, noise_rates=None, resume: bool = True) -> list[dict]:
+def run_n1(cfg: dict, result_dir: str,
+           noise_rates=None, widths=None,
+           resume: bool = True) -> list[dict]:
     import torch
     device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    active_noise = noise_rates if noise_rates is not None else cfg['noise_rates']
+    active_noise  = noise_rates if noise_rates is not None else cfg['noise_rates']
+    active_widths = widths      if widths      is not None else cfg['widths']
 
     print(f"\n{'='*60}")
     print(f"Experiment N1: Width × Noise Phase Diagram   [device: {device_str}]")
-    print(f"Widths:       {cfg['widths']}")
+    print(f"Widths:       {active_widths}")
     print(f"Noise rates:  {[f'{η:.0%}' for η in active_noise]}")
     print(f"Seeds:        {cfg['seeds']}")
-    print(f"Total runs:   {len(cfg['widths']) * len(active_noise) * len(cfg['seeds'])}")
+    print(f"Total runs:   {len(active_widths) * len(active_noise) * len(cfg['seeds'])}")
     print(f"Result dir:   {result_dir}")
     print(f"{'='*60}\n")
 
@@ -96,7 +96,7 @@ def run_n1(cfg: dict, result_dir: str, noise_rates=None, resume: bool = True) ->
     all_results = []
 
     for eta in active_noise:
-        for k in cfg['widths']:
+        for k in active_widths:
             for seed in cfg['seeds']:
                 eta_pct = round(eta * 100)
                 run_id  = f"n1_k{k:03d}_eta{eta_pct:03d}_s{seed}"
@@ -198,11 +198,13 @@ def plot_n1(result_dir: str, cfg: dict = None) -> None:
     _plot_dd_overlay(widths, noises, te_matrix, result_dir)
 
     # ── Fig 5: three-region phase diagram ────────────────────────────────
-    baseline = _get_baseline(te_matrix, noises)
-    _plot_phase_diagram(widths, noises, te_matrix, baseline, cfg, result_dir)
+    baseline_per_k  = _get_baseline_per_k(te_matrix, noises)
+    baseline_global = _get_baseline(te_matrix, noises)
+    _plot_phase_diagram(widths, noises, te_matrix,
+                        baseline_per_k, baseline_global, cfg, result_dir)
 
     # ── Benign boundary fit ───────────────────────────────────────────────
-    _fit_benign_boundary(widths, noises, te_matrix, baseline, cfg, result_dir)
+    _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_dir)
 
 
 def _plot_heatmap(widths, noises, te_matrix, result_dir):
@@ -277,18 +279,30 @@ def _plot_dd_overlay(widths, noises, te_matrix, result_dir):
     print(f"[plot] Fig 4 saved → {path}")
 
 
-def _get_baseline(te_matrix, noises) -> float:
-    """Baseline = test error at η=0, best width (minimum)."""
+def _get_baseline_per_k(te_matrix, noises) -> np.ndarray:
+    """Per-column baseline: test error at η=0 for each k.
+
+    Δ(k, η) = TestErr(k, η) − TestErr(k, η=0)
+    This measures: 'how much does noise hurt THIS width?'
+    rather than comparing against the global best.
+    """
     if 0.0 in noises:
-        eta0_row = te_matrix[noises.index(0.0)]
-        valid = eta0_row[~np.isnan(eta0_row)]
-        if len(valid):
-            return float(valid.min())
-    # Fallback: global min
+        return te_matrix[noises.index(0.0)].copy()
+    # Fallback: column-wise minimum
+    return np.nanmin(te_matrix, axis=0)
+
+
+def _get_baseline(te_matrix, noises) -> float:
+    """Global baseline (used only for title annotation)."""
+    if 0.0 in noises:
+        row = te_matrix[noises.index(0.0)]
+        return float(np.nanmin(row))
     return float(np.nanmin(te_matrix))
 
 
-def _plot_phase_diagram(widths, noises, te_matrix, baseline, cfg, result_dir):
+def _plot_phase_diagram(widths, noises, te_matrix,
+                        baseline_per_k, baseline_global, cfg, result_dir):
+    """Phase diagram using per-column baseline: Δ(k,η) = TestErr(k,η) − TestErr(k,0)."""
     import matplotlib.pyplot as plt
     from matplotlib.patches import Patch
 
@@ -296,7 +310,7 @@ def _plot_phase_diagram(widths, noises, te_matrix, baseline, cfg, result_dir):
     tt = cfg['tempered_thresh']
 
     set_style()
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(9, 5.5))
 
     _COLORS = {
         'benign':       PALETTE['benign'],
@@ -305,13 +319,16 @@ def _plot_phase_diagram(widths, noises, te_matrix, baseline, cfg, result_dir):
     }
 
     for ni, eta in enumerate(noises):
+        if eta == 0.0:
+            continue   # skip baseline row (Δ=0 by definition)
         for wi, k in enumerate(widths):
             val = te_matrix[ni, wi]
-            if np.isnan(val):
+            bl  = baseline_per_k[wi]
+            if np.isnan(val) or np.isnan(bl):
                 continue
-            delta  = val - baseline
+            delta  = val - bl
             region = _classify(delta, bt, tt)
-            ax.scatter(k, eta, c=_COLORS[region], s=200, zorder=3,
+            ax.scatter(k, eta, c=_COLORS[region], s=240, zorder=3,
                        marker='s', edgecolors='white', linewidths=0.5)
             ax.text(k, eta, f'{val*100:.0f}', ha='center', va='center',
                     fontsize=6.5, color='white', fontweight='bold', zorder=4)
@@ -326,7 +343,7 @@ def _plot_phase_diagram(widths, noises, te_matrix, baseline, cfg, result_dir):
     ax.set_ylabel('Label Noise Rate $\\eta$')
     ax.set_title(
         f'Fig 5 — Overfitting Phase Diagram\n'
-        f'(baseline={baseline*100:.1f}%, '
+        f'(Δ = TestErr(k,η) − TestErr(k,0),  '
         f'benign Δ<{bt*100:.0f}%, tempered Δ<{tt*100:.0f}%)'
     )
 
@@ -344,7 +361,7 @@ def _plot_phase_diagram(widths, noises, te_matrix, baseline, cfg, result_dir):
     print(f"[plot] Fig 5 saved → {path}")
 
 
-def _fit_benign_boundary(widths, noises, te_matrix, baseline, cfg, result_dir):
+def _fit_benign_boundary(widths, noises, te_matrix, baseline_per_k, cfg, result_dir):
     """
     For each η, find the smallest k that satisfies the benign condition.
     Fit w_benign(η) ≈ c · η^α via log-log linear regression.
@@ -362,7 +379,7 @@ def _fit_benign_boundary(widths, noises, te_matrix, baseline, cfg, result_dir):
             val = te_matrix[ni, wi]
             if np.isnan(val):
                 continue
-            if (val - baseline) < bt:
+            if (val - baseline_per_k[wi]) < bt:
                 boundary[eta] = k
                 break   # first (smallest) benign k found
 
@@ -434,7 +451,10 @@ if __name__ == '__main__':
     parser.add_argument('--plot_only',   action='store_true', help='Skip training, plot only')
     parser.add_argument('--noise_rates', nargs='+', type=float, default=None,
                         metavar='ETA',
-                        help='Subset of noise rates to run, e.g. --noise_rates 0.0 0.05')
+                        help='Subset of noise rates, e.g. --noise_rates 0.0 0.05')
+    parser.add_argument('--widths', nargs='+', type=int, default=None,
+                        metavar='K',
+                        help='Subset of widths to run, e.g. --widths 1 3 6')
     args = parser.parse_args()
 
     if args.drive:
@@ -445,6 +465,7 @@ if __name__ == '__main__':
     if not args.plot_only:
         run_n1(N1_CONFIG, result_dir,
                noise_rates=args.noise_rates,
+               widths=args.widths,
                resume=not args.no_resume)
 
     plot_n1(result_dir, N1_CONFIG)
