@@ -12,6 +12,9 @@ build/
 # Data & results (large files)
 data/
 results/checkpoints/
+logs/
+results/*_share/
+results/*_share.zip
 *.pt
 *.pth
 

@@ -5,8 +5,6 @@ Shared by R1, R2, N1, N2, N3 — only noise_rate and seed differ per experiment.
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-import torchvision
-import torchvision.transforms as T
 
 
 _CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
@@ -74,6 +72,15 @@ def get_cifar10_loaders(
         train_loader: Shuffled loader over the noisy subset.
         test_loader:  Full 10 000-sample clean test set.
     """
+    try:
+        import torchvision
+        import torchvision.transforms as T
+    except ImportError as exc:
+        raise ImportError(
+            "torchvision is required to load CIFAR-10. "
+            "Install project dependencies with: pip install -r requirements.txt"
+        ) from exc
+
     transform_train = T.Compose([T.ToTensor(), T.Normalize(_CIFAR10_MEAN, _CIFAR10_STD)])
     transform_test  = T.Compose([T.ToTensor(), T.Normalize(_CIFAR10_MEAN, _CIFAR10_STD)])
 

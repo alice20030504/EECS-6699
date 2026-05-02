@@ -1,0 +1,30 @@
+# Experiment N2: Weight decay ablation built on the N1 setup
+experiment: N2
+parent_experiment: N1
+rationale: "Follow-up to N1: fix eta=15% near the double-descent setting and test whether weight decay suppresses the peak."
+
+data:
+  dataset: cifar10
+  subset_size: 5000
+  data_seed: 42
+  label_noise: 0.15
+  num_workers: 4
+
+model:
+  arch: cnn5
+  activation: relu
+  width_multipliers: [2, 4, 6, 8, 16]
+
+weight_decays: [0.0, 1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1]
+seeds: [42]
+
+training:
+  epochs: 300
+  batch_size: 128
+  optimizer: adam
+  lr: 0.001
+  lr_schedule: none
+
+logging:
+  results_dir: results/N2
+  save_checkpoint: false
