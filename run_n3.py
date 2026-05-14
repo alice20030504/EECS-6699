@@ -1,9 +1,10 @@
 """N3: Activation function comparison built on the N1/N2 phase-diagram setup.
 
-This supplementary experiment asks whether smooth activations (GELU, Tanh) shift
-the width/noise peak relative to the non-smooth ReLU. Under the Neural Tangent
-Kernel (NTK) framework, smooth activations have different spectral properties
-which can move the boundary of the benign overfitting region.
+This supplementary experiment tests whether activation choice affects the
+double-descent peak height or benign recovery speed. H4 conjectured that smooth
+activations (GELU, Tanh) might shift or weaken the peak relative to ReLU.
+Results: GELU behaves like ReLU throughout; Tanh produces a higher peak and
+slower recovery, driven by saturation rather than smoothness.
 
 Setup mirrors N2: same CNN5/CIFAR-10 subset, fixed noise eta=15%, but now we
 sweep activations (ReLU / GELU / Tanh) across widths that cover both the
@@ -74,8 +75,8 @@ N3_CONFIG = {
     "lr": N1_CONFIG["lr"],
     "weight_decay": 0.0,
     "epochs": N1_CONFIG["epochs"],
-    "checkpoint_every": N1_CONFIG["checkpoint_every"],
-    "eval_every": N1_CONFIG["eval_every"],
+    "checkpoint_every": 10,
+    "eval_every": 10,
 }
 
 # Colours and display names for each activation

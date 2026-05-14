@@ -56,8 +56,8 @@ N2_CONFIG = {
     "optimizer": N1_CONFIG["optimizer"],
     "lr": N1_CONFIG["lr"],
     "epochs": N1_CONFIG["epochs"],
-    "checkpoint_every": N1_CONFIG["checkpoint_every"],
-    "eval_every": N1_CONFIG["eval_every"],
+    "checkpoint_every": 10,
+    "eval_every": 10,
 }
 
 
