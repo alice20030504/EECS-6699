@@ -153,9 +153,9 @@ def plot_phase_diagram(
     tempered_rgb     = matplotlib.colors.to_rgba(PALETTE['tempered'])
     catastrophic_rgb = matplotlib.colors.to_rgba(PALETTE['catastrophic'])
 
-    region_colors[delta < 0.03]                   = benign_rgb
-    region_colors[(delta >= 0.03) & (delta < 0.10)] = tempered_rgb
-    region_colors[delta >= 0.10]                  = catastrophic_rgb
+    region_colors[delta < 0.05]                   = benign_rgb
+    region_colors[(delta >= 0.05) & (delta < 0.15)] = tempered_rgb
+    region_colors[delta >= 0.15]                  = catastrophic_rgb
 
     ax2.imshow(
         region_colors, aspect='auto', origin='lower',
