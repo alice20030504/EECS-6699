@@ -7,12 +7,12 @@ We investigate the **benign overfitting** phenomenon in deep CNNs by reproducing
 
 ## Team
 
-| Member | Role | Experiments |
-|--------|------|-------------|
-| **Meng** | Theory & Writing | Literature review, Sec 1–2, Discussion |
-| **Ye** | Engineering & Reproduction | R1, R2, N1 (η = 0%, 5%) |
-| **Alice** | Main Experiments | N1 (η = 10%, 20%) |
-| **Lyric** | Ablations & Visualization | N1 (η = 30%, 40%), N2, N3, all figures |
+| Member | Role | Experiments | Paper |
+|--------|------|-------------|-------|
+| **Yixuan Ye** | Project design & engineering | R1 · R2 · N1 (η = 0%, 5%) | Paper revision |
+| **Shurong Zhang** | Main experiments & presentation | N1 (η = 10%, 20%) | PPT · Paper revision |
+| **Yuxia Meng** | Theory & writing | Theory background · N2 | Sec 1–2 · Paper revision |
+| **Rui Li** | Ablations & presentation | N3 · N1 (η = 30%, 40%) | PPT · Paper revision |
 
 ---
 
