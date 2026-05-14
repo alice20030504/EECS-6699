@@ -11,7 +11,7 @@ Width multiplier k controls all channel counts linearly:
     FC2:   8k  → n_classes
 
 Parameter count ≈ O(k²).  For k=1 → ~750 params, k=64 → ~3 M params.
-Interpolation threshold with 5 000 training samples is expected near k ≈ 8–16.
+Interpolation threshold at η=15% observed at k=6 (22K params) in R1.
 """
 import torch.nn as nn
 
